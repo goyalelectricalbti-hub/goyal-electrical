@@ -45,7 +45,7 @@ section{padding:72px 0}.white{background:#fff}.heading{margin-bottom:28px}.headi
 <div class="catalogmeta"><b id="catalogCount">Loading catalogue…</b><span>LP reference only • GST, discount, stock and final selling price to be confirmed</span></div>
 <div id="catalogGrid" class="cataloggrid"></div></div></section><section class="contact" id="contact"><div class="container contactgrid"><div><span class="eyebrow">CONTACT GOYAL ELECTRICAL</span><h2 style="font-size:44px;line-height:1.08">Need a quotation?</h2><p style="color:#cbd0d8">Send the product name, size, quantity or product code on WhatsApp.</p><div class="actions"><a class="btn green" href="https://wa.me/919815473737?text=Hello%20Goyal%20Electrical%2C%20please%20help%20me%20with%20a%20quotation." target="_blank">WhatsApp for Quotation</a><a class="btn" href="tel:+919815473737">Call +91 98154 73737</a></div></div><div class="contactbox"><h3>Goyal Electrical</h3><div class="row">📍 Street No. 10-A, Corner, Ajit Road, Bathinda, Punjab 151001</div><div class="row">📞 <b>+91 98154 73737</b></div><div class="row">📞 <b>+91 94177 53423</b></div><div class="row">💬 WhatsApp Enquiry</div></div></div></section>
 <footer><div class="container">© 2026 Goyal Electrical, Bathinda • Genuine Products. Right Advice. Best Value.</div></footer>
-<script src="products.js"></script><script>
+<script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script><script src="products.js"></script><script>
 function initGoyalCatalogue(){
  const data=window.GOYAL_PRODUCTS||[];
  const q=document.getElementById('catalogSearch'), cat=document.getElementById('catalogCat'), range=document.getElementById('catalogRange'), grid=document.getElementById('catalogGrid'), count=document.getElementById('catalogCount');
@@ -60,5 +60,5 @@ function initGoyalCatalogue(){
  }
  [q,cat,range].forEach(el=>el.addEventListener('input',render)); render();
 }
-window.addEventListener('goyal-products-ready',initGoyalCatalogue); if(window.GOYAL_PRODUCTS) initGoyalCatalogue();
+window.addEventListener('goyal-products-ready',initGoyalCatalogue);window.addEventListener('goyal-products-error',function(e){document.getElementById('catalogCount').textContent='Catalogue could not load. Please refresh once.';console.error(e.detail)});if(window.GOYAL_PRODUCTS)initGoyalCatalogue();
 </script></body></html>
