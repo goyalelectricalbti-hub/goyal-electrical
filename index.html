@@ -47,7 +47,7 @@ section{padding:72px 0}.white{background:#fff}.heading{margin-bottom:28px}.headi
 <footer><div class="container">© 2026 Goyal Electrical, Bathinda • Genuine Products. Right Advice. Best Value.</div></footer>
 <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script><script src="products.js"></script><script>
 function initGoyalCatalogue(){
- const data=window.GOYAL_PRODUCTS||[];
+ const data=(window.GOYAL_PRODUCTS&&Array.isArray(window.GOYAL_PRODUCTS.products))?window.GOYAL_PRODUCTS.products:(Array.isArray(window.GOYAL_PRODUCTS)?window.GOYAL_PRODUCTS:[]);
  const q=document.getElementById('catalogSearch'), cat=document.getElementById('catalogCat'), range=document.getElementById('catalogRange'), grid=document.getElementById('catalogGrid'), count=document.getElementById('catalogCount');
  if(!grid)return;
  [...new Set(data.map(x=>x.range).filter(Boolean))].sort().forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=r;range.appendChild(o)});
