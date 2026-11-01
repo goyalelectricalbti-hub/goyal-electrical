@@ -1,6 +1,6 @@
 # Supabase setup — GOYAL ELECTRICAL CRM
 
-The CRM is now connected in the browser to Supabase Auth and cloud CRUD. GitHub Pages serves the front end; Supabase stores the CRM data. Complete these one-time steps before using it with real customer records.
+GOYAL ELECTRICAL CRM PRO is an independent cloud CRM. GitHub Pages serves the front end and Supabase stores CRM data. BUSY integration is not part of this application. Complete these one-time steps before using it with real customer records.
 
 ## 1. Prepare the database
 1. Open the Supabase project used by the CRM.
@@ -30,6 +30,6 @@ Staff can create an Auth account, but they cannot grant themselves access. After
 - Use test records until permissions, backups and restore have been checked.
 
 ## Current limitations
-- BUSY 21 is **not connected** yet. The BUSY panel is a status/placeholder; no automatic sync or posting is taking place.
+- BUSY integration is intentionally excluded. Maintain customers, products, stock, purchases and sales directly in the CRM.
 - Product bulk import, quotation PDF/line items, file attachments and staff invitation screens are not implemented yet.
 - The app uses the Supabase publishable key in the browser, which is expected; never use a service_role/secret key in the front end.
