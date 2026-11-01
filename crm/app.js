@@ -80,7 +80,18 @@ function openForm(type,id){
  const rec=id?state.data[type].find(x=>x.id===id):{};
  editing={type,id:id||null};
  $("#dialogTitle").textContent=(id?"Edit ":"Add ")+(labels[type]||type);
- $("#dialogFields").innerHTML=fields[type].map(([key,label,kind,extra])=>{let value=rec[key]??(kind==="date"?new Date().toISOString().slice(0,10):"");return '<div class="field '+(kind==="textarea"?"full":"")+'"><label>'+label+'</label>'+(kind==="select"?'<select name="'+key+'">'+extra.split("|").map(v=>'<option value="'+v+'" '+(value===v?"selected":"")+'>'+v.replaceAll("_"," ")+'</option>').join("")+'</select>':kind==="textarea"?'<textarea name="'+key+'">'+esc(value)+'</textarea>':'<input name="'+key+'" type="'+kind+'" value="'+esc(value)+'" '+(extra===1?"required":"")+'></div>'}).join("");
+ $("#dialogFields").innerHTML=fields[type].map(([key,label,kind,extra])=>{
+  const value=rec[key]??(kind==="date"?new Date().toISOString().slice(0,10):"");
+  let control="";
+  if(kind==="select"){
+   control='<select name="'+key+'">'+extra.split("|").map(v=>'<option value="'+v+'" '+(value===v?"selected":"")+'>'+v.replaceAll("_"," ")+'</option>').join("")+'</select>';
+  }else if(kind==="textarea"){
+   control='<textarea name="'+key+'">'+esc(value)+'</textarea>';
+  }else{
+   control='<input name="'+key+'" type="'+kind+'" value="'+esc(value)+'" '+(extra===1?"required":"")+'>';
+  }
+  return '<div class="field '+(kind==="textarea"?"full":"")+'"><label>'+label+'</label>'+control+'</div>';
+ }).join("");
  $("#recordDialog").showModal();
 }
 async function saveRecord(e){e.preventDefault();if(!editing)return;const btn=$("#saveRecord");btn.disabled=true;try{
