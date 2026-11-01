@@ -46,13 +46,22 @@ No automatic posting of finalized accounting vouchers.
 - `supabase/schema.sql` defines the cloud PostgreSQL tables for organizations, staff roles, companies, leads, customers, follow-ups, sites, products, quotations, sales orders, BUSY sync runs and audit events.
 - Row-level security policies scope data to organization membership and separate Admin, Manager, Sales and Accountant permissions.
 - `supabase/SETUP.md` explains how to create a free Supabase project and apply the schema safely.
-- This is a schema foundation only. The CRM browser app is not yet connected to Supabase; authentication and live cloud CRUD require a configured Supabase project and app integration.
+- The CRM browser app now includes Supabase authentication and cloud CRUD for leads, customers, follow-ups, sites, products, quotations and sales orders. It requires the schema/grants SQL and first-admin bootstrap to be run in the supplied order.
 
-## Next production milestones
-- Replace localStorage CRUD with authenticated Supabase queries and company-scoped cloud records.
+## Deployment
+A GitHub Actions workflow has been added at `.github/workflows/deploy-crm.yml`. It publishes the repository contents, preserving the existing website at the root and making the CRM available under `/crm/`. Enable GitHub Pages with **GitHub Actions** as the build/deployment source in repository Settings → Pages. The expected project URL is `https://goyalelectricalbti-hub.github.io/goyal-electrical/crm/` once the deployment succeeds.
+
+## Remaining production milestones
 - Add managed authentication and Admin/Manager/Sales/Accountant roles.
 - Add cloud database schema, migrations and server APIs.
 - Add file/photo storage and quotation PDF generation.
 - Build and sign the Windows connector after BUSY interface verification.
 - Add automated 15-minute scheduling, heartbeat, monitoring, retries and reconciliation.
 - Test multi-company isolation and disaster recovery before go-live.
+
+## Current CRM module coverage
+- Cloud CRUD: leads, customers, follow-ups, sites/projects, products, quotations and sales orders.
+- Dashboard, pipeline summary, reports and CSV exports.
+- Login, sign-up, session handling and organization-membership checks.
+- Company-wise data filtering; Admin, Manager, Sales and Accountant roles enforced by database policies.
+- Not yet implemented: quotation PDF/document generation, product bulk import, advanced dashboards, team invitation UI, and the Windows BUSY connector.
