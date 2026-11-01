@@ -193,7 +193,7 @@ function documentPrint(type,record){
 function buildDocumentPdf(type,record){
  // Self-contained PDF writer: no third-party PDF CDN is required.
  const quote=type==="quotations",title=quote?"QUOTATION / ESTIMATE":"SALES ORDER";
- const ascii=v=>String(v??"").normalize("NFKD").replace(/[^\x20-\x7E]/g," ").replace(/\\s+/g," ").trim();
+ const ascii=v=>String(v??"").normalize("NFKD").replace(/[^\x20-\x7E]/g," ").replace(/\s+/g," ").trim();
  const fmt=v=>"INR "+Number(v||0).toFixed(2);
  const lines=[];
  const add=(v="")=>{const t=ascii(v);if(!t){lines.push("");return;}for(let i=0;i<t.length;i+=92)lines.push(t.slice(i,i+92));};
