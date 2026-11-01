@@ -3,7 +3,7 @@
 -- Run once in Supabase Dashboard -> SQL Editor.
 do $$
 declare
-  admin_email text := 'REPLACE_WITH_ADMIN_EMAIL';
+  admin_email text := 'goyalelectricalbti@gmail.com';
   admin_user_id uuid;
   org_id uuid;
 begin
@@ -35,4 +35,4 @@ select o.name as organization, m.role, c.name as crm_company
 from public.organizations o
 join public.organization_members m on m.organization_id=o.id
 left join public.crm_companies c on c.organization_id=o.id
-where m.user_id=(select id from auth.users where lower(email)=lower('REPLACE_WITH_ADMIN_EMAIL') limit 1);
+where m.user_id=(select id from auth.users where lower(email)=lower('goyalelectricalbti@gmail.com') limit 1);
