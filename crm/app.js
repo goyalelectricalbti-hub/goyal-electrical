@@ -190,12 +190,58 @@ function documentPrint(type,record){
  const html='<!doctype html><html><head><meta charset="utf-8"><title>'+title+' '+esc(record.documentNumber)+'</title><style>body{font:14px Arial,sans-serif;color:#182b3c;margin:32px}header{display:flex;justify-content:space-between;border-bottom:3px solid #1769aa;padding-bottom:18px}h1{font-size:22px;color:#102b46;margin:0}h2{font-size:18px;margin:25px 0 8px}small{color:#68798a}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:20px 0}.box{border:1px solid #dce4ec;padding:14px;border-radius:8px}table{width:100%;border-collapse:collapse;margin-top:14px}th,td{padding:10px;border:1px solid #dce4ec;text-align:left;font-size:12px}th{background:#f1f5f9}.totals{margin:18px 0 18px auto;width:300px}.totals div{display:flex;justify-content:space-between;padding:5px}.grand{font-size:19px;font-weight:bold;color:#1769aa;border-top:2px solid #1769aa}.terms{white-space:pre-wrap}.print{padding:10px 16px;background:#1769aa;color:white;border:0;border-radius:6px}@media print{.print{display:none}body{margin:12mm}}</style></head><body><button class="print" onclick="window.print()">Print / Save PDF</button><header><div><h1>GOYAL ELECTRICAL</h1><b>Authorised Dealer – Havells India Ltd, TRENZLITE, Orient Plum, APAR Wire</b><p>Street No. 10A, Ajit Road, Bathinda, Punjab<br>9417753423 | 9815473737 · Goyalelectricalbti@gmail.com</p></div><div><h1>'+title+'</h1><b>'+esc(record.documentNumber||"")+'</b><p>Date: '+esc(fmtDate(record.documentDate))+'<br>'+(quote?"Valid until: ":"Delivery: ")+esc(fmtDate(record.validUntil||record.deliveryDate))+'</p></div></header><div class="meta"><div class="box"><b>Bill to</b><p>'+esc(record.customerName)+'</p>'+esc(record.billingAddress)+'<p>GSTIN: '+esc(record.gstin)+'<br>Phone: '+esc(record.phone)+'</p></div><div class="box"><b>Document details</b><p>Place of supply: '+esc(record.placeOfSupply)+'<br>Supply type: '+esc(record.supplyType)+'<br>Status: '+esc(record.status)+'</p></div></div><h2>Items</h2><table><thead><tr><th>#</th><th>Item / Description</th><th>HSN/SAC</th><th>Qty</th><th>Rate</th><th>GST</th><th>Amount</th></tr></thead><tbody>'+lines+'</tbody></table><div class="totals"><div><span>Subtotal</span><b>'+money(record.subtotal)+'</b></div><div><span>Discount</span><b>'+money(record.discount)+'</b></div><div><span>Taxable value</span><b>'+money(record.taxable)+'</b></div><div><span>GST</span><b>'+money(record.tax)+'</b></div><div><span>Additional charges</span><b>'+money(record.extraCharges)+'</b></div><div class="grand"><span>Grand total</span><b>'+money(record.total??record.amount)+'</b></div></div><div class="box"><b>Notes</b><p>'+esc(record.notes)+'</p><b>Terms & conditions</b><p class="terms">'+esc(record.terms)+'</p></div><p style="margin-top:35px;text-align:right">For GOYAL ELECTRICAL<br><br><br>Authorised Signatory</p></body></html>';
  const w=window.open("","_blank");if(!w){toast("Allow pop-ups to preview or print the document.",true);return}w.document.write(html);w.document.close();
 }
-function shareDocument(type,id){
+function buildDocumentPdf(type,record){
+ if(!window.jspdf?.jsPDF)throw new Error("PDF generator is still loading. Refresh the CRM and try again.");
+ const {jsPDF}=window.jspdf;const pdf=new jsPDF({unit:"mm",format:"a4"});const W=210;let y=18;
+ const quote=type==="quotations",title=quote?"QUOTATION / ESTIMATE":"SALES ORDER";
+ const moneyText=v=>"INR "+Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+ const line=(text,x=14,max=180,size=9)=>{pdf.setFontSize(size);const lines=pdf.splitTextToSize(String(text??""),max);pdf.text(lines,x,y);y+=lines.length*(size*.42)+2;};
+ const ensure=(n=12)=>{if(y+n>278){pdf.addPage();y=18;}};
+ pdf.setFont("helvetica","bold");pdf.setFontSize(18);pdf.text("GOYAL ELECTRICAL",14,y);pdf.setFontSize(12);pdf.text(title,W-14,y,{align:"right"});y+=8;
+ pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.text("Authorised Dealer – Havells India Ltd, TRENZLITE, Orient Plum, APAR Wire",14,y);y+=5;
+ pdf.text("Street No. 10A, Ajit Road, Bathinda, Punjab | 9417753423 | 9815473737",14,y);y+=5;
+ pdf.text("Goyalelectricalbti@gmail.com",14,y);y+=5;pdf.setDrawColor(25,95,150);pdf.setLineWidth(.7);pdf.line(14,y,W-14,y);y+=8;
+ pdf.setFont("helvetica","bold");line("Document: "+(record.documentNumber||record.quotation_number||record.order_number||""),14,180,10);
+ pdf.setFont("helvetica","normal");line("Date: "+(record.documentDate||record.quotation_date||record.order_date||"")+"     "+(quote?"Valid until: ":"Expected delivery: ")+(record.validUntil||record.deliveryDate||""));
+ line("Bill to: "+(record.customerName||""));line("Address: "+(record.billingAddress||""));line("Phone: "+(record.phone||"")+"    GSTIN: "+(record.gstin||""));
+ line("Place of supply: "+(record.placeOfSupply||"")+"    Supply type: "+(record.supplyType||""));
+ y+=3;ensure(15);
+ const cols=[14,91,116,139,160,184];const headers=["Item / Description","HSN","Qty","Rate","GST","Amount"];
+ pdf.setFillColor(235,242,249);pdf.rect(14,y-4,182,8,"F");pdf.setFont("helvetica","bold");pdf.setFontSize(7);
+ headers.forEach((v,i)=>pdf.text(v,cols[i],y+1));y+=8;
+ (record.items||[]).forEach((it,i)=>{ensure(15);pdf.setFont("helvetica","normal");pdf.setFontSize(7);
+  const name=pdf.splitTextToSize(String(it.name||"")+(it.description?" - "+it.description:""),72);
+  pdf.text(name,14,y);pdf.text(String(it.hsn||""),91,y);pdf.text(String(it.qty??0)+" "+String(it.unit||""),116,y);
+  pdf.text(moneyText(it.rate),139,y);pdf.text(String(it.gst??0)+"%",160,y);pdf.text(moneyText(Number(it.qty||0)*Number(it.rate||0)),184,y,{align:"right"});
+  y+=Math.max(7,name.length*3.5);pdf.setDrawColor(220,226,232);pdf.line(14,y-2,196,y-2);
+ });
+ y+=4;ensure(42);const totals=[["Subtotal",record.subtotal],["Discount",record.discount],["Taxable value",record.taxable],["GST",record.tax],["Additional charges",record.extraCharges],["Grand total",record.total??record.amount]];
+ totals.forEach(([k,v])=>{pdf.setFont("helvetica",k==="Grand total"?"bold":"normal");pdf.setFontSize(k==="Grand total"?12:9);pdf.text(k,135,y);pdf.text(moneyText(v),196,y,{align:"right"});y+=6;});
+ y+=5;ensure(25);pdf.setFont("helvetica","bold");line("Notes",14,180,9);pdf.setFont("helvetica","normal");line(record.notes||"",14,180,8);
+ pdf.setFont("helvetica","bold");line("Terms & conditions",14,180,9);pdf.setFont("helvetica","normal");line(record.terms||"",14,180,8);
+ ensure(18);y+=8;pdf.text("For GOYAL ELECTRICAL",196,y,{align:"right"});y+=13;pdf.text("Authorised Signatory",196,y,{align:"right"});
+ return pdf.output("blob");
+}
+async function shareDocument(type,id){
  const rec=state.data[type].find(x=>x.id===id);if(!rec)return;
- const num=rec.documentNumber||rec.quotation_number||rec.order_number;
- const msg=(type==="quotations"?"Quotation ":"Sales order ")+num+" from GOYAL ELECTRICAL. Customer: "+(rec.customerName||"")+". Total: "+money(rec.total??rec.amount)+". Please find the document PDF attached separately.";
- const phone=String(rec.phone||"").replace(/\D/g,"");
- window.open("https://wa.me/"+(phone?phone:"")+"?text="+encodeURIComponent(msg),"_blank");
+ const num=rec.documentNumber||rec.quotation_number||rec.order_number||"document";
+ const title=(type==="quotations"?"Quotation ":"Sales Order ")+num;
+ const msg=title+" from GOYAL ELECTRICAL. Customer: "+(rec.customerName||"")+". Total: "+money(rec.total??rec.amount)+".";
+ try{
+  toast("Preparing PDF for sharing…");
+  const blob=buildDocumentPdf(type,rec);
+  const file=new File([blob],title.replace(/[^a-z0-9-_ ]/gi,"").replace(/\s+/g,"_")+".pdf",{type:"application/pdf"});
+  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+   await navigator.share({files:[file],title,text:msg});
+   toast("PDF shared. Choose WhatsApp in the Android share sheet.");
+   return;
+  }
+  const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=file.name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  const phone=String(rec.phone||"").replace(/\D/g,"");
+  window.open("https://wa.me/"+phone+"?text="+encodeURIComponent(msg)," _blank".trim());
+  toast("PDF downloaded. Attach it in WhatsApp before sending.");
+ }catch(err){if(err.name==="AbortError"){toast("Sharing cancelled.");return;}toast("PDF sharing failed: "+err.message,true);}
 }
 async function convertQuote(id){
  const q=state.data.quotations.find(x=>x.id===id);if(!q)return;
