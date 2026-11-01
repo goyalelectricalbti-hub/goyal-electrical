@@ -191,36 +191,51 @@ function documentPrint(type,record){
  const w=window.open("","_blank");if(!w){toast("Allow pop-ups to preview or print the document.",true);return}w.document.write(html);w.document.close();
 }
 function buildDocumentPdf(type,record){
- if(!window.jspdf?.jsPDF)throw new Error("PDF generator is still loading. Refresh the CRM and try again.");
- const {jsPDF}=window.jspdf;const pdf=new jsPDF({unit:"mm",format:"a4"});const W=210;let y=18;
+ // Self-contained PDF writer: no third-party PDF CDN is required.
  const quote=type==="quotations",title=quote?"QUOTATION / ESTIMATE":"SALES ORDER";
- const moneyText=v=>"INR "+Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
- const line=(text,x=14,max=180,size=9)=>{pdf.setFontSize(size);const lines=pdf.splitTextToSize(String(text??""),max);pdf.text(lines,x,y);y+=lines.length*(size*.42)+2;};
- const ensure=(n=12)=>{if(y+n>278){pdf.addPage();y=18;}};
- pdf.setFont("helvetica","bold");pdf.setFontSize(18);pdf.text("GOYAL ELECTRICAL",14,y);pdf.setFontSize(12);pdf.text(title,W-14,y,{align:"right"});y+=8;
- pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.text("Authorised Dealer – Havells India Ltd, TRENZLITE, Orient Plum, APAR Wire",14,y);y+=5;
- pdf.text("Street No. 10A, Ajit Road, Bathinda, Punjab | 9417753423 | 9815473737",14,y);y+=5;
- pdf.text("Goyalelectricalbti@gmail.com",14,y);y+=5;pdf.setDrawColor(25,95,150);pdf.setLineWidth(.7);pdf.line(14,y,W-14,y);y+=8;
- pdf.setFont("helvetica","bold");line("Document: "+(record.documentNumber||record.quotation_number||record.order_number||""),14,180,10);
- pdf.setFont("helvetica","normal");line("Date: "+(record.documentDate||record.quotation_date||record.order_date||"")+"     "+(quote?"Valid until: ":"Expected delivery: ")+(record.validUntil||record.deliveryDate||""));
- line("Bill to: "+(record.customerName||""));line("Address: "+(record.billingAddress||""));line("Phone: "+(record.phone||"")+"    GSTIN: "+(record.gstin||""));
- line("Place of supply: "+(record.placeOfSupply||"")+"    Supply type: "+(record.supplyType||""));
- y+=3;ensure(15);
- const cols=[14,91,116,139,160,184];const headers=["Item / Description","HSN","Qty","Rate","GST","Amount"];
- pdf.setFillColor(235,242,249);pdf.rect(14,y-4,182,8,"F");pdf.setFont("helvetica","bold");pdf.setFontSize(7);
- headers.forEach((v,i)=>pdf.text(v,cols[i],y+1));y+=8;
- (record.items||[]).forEach((it,i)=>{ensure(15);pdf.setFont("helvetica","normal");pdf.setFontSize(7);
-  const name=pdf.splitTextToSize(String(it.name||"")+(it.description?" - "+it.description:""),72);
-  pdf.text(name,14,y);pdf.text(String(it.hsn||""),91,y);pdf.text(String(it.qty??0)+" "+String(it.unit||""),116,y);
-  pdf.text(moneyText(it.rate),139,y);pdf.text(String(it.gst??0)+"%",160,y);pdf.text(moneyText(Number(it.qty||0)*Number(it.rate||0)),184,y,{align:"right"});
-  y+=Math.max(7,name.length*3.5);pdf.setDrawColor(220,226,232);pdf.line(14,y-2,196,y-2);
+ const ascii=v=>String(v??"").normalize("NFKD").replace(/[^\\x20-\\x7E]/g," ").replace(/\\s+/g," ").trim();
+ const fmt=v=>"INR "+Number(v||0).toFixed(2);
+ const lines=[];
+ const add=(v="")=>{const t=ascii(v);if(!t){lines.push("");return;}for(let i=0;i<t.length;i+=92)lines.push(t.slice(i,i+92));};
+ add("GOYAL ELECTRICAL");add("Authorised Dealer - Havells India Ltd, TRENZLITE, Orient Plum, APAR Wire");
+ add("Street No. 10A, Ajit Road, Bathinda, Punjab | 9417753423 | 9815473737");
+ add("Goyalelectricalbti@gmail.com");add("--------------------------------------------------------------------------");
+ add(title+"     Document No: "+(record.documentNumber||record.quotation_number||record.order_number||""));
+ add("Date: "+(record.documentDate||record.quotation_date||record.order_date||"")+"     "+(quote?"Valid until: ":"Expected delivery: ")+(record.validUntil||record.deliveryDate||""));
+ add("BILL TO: "+(record.customerName||""));add("Address: "+(record.billingAddress||""));
+ add("Phone: "+(record.phone||"")+"     GSTIN: "+(record.gstin||""));
+ add("Place of supply: "+(record.placeOfSupply||"")+"     Supply type: "+(record.supplyType||""));
+ add("");add("ITEM / DESCRIPTION | HSN | QTY | RATE | GST | AMOUNT");add("--------------------------------------------------------------------------");
+ (record.items||[]).forEach((it,i)=>{
+  add((i+1)+". "+(it.name||"")+" | HSN: "+(it.hsn||"-")+" | Qty: "+(it.qty??0)+" "+(it.unit||""));
+  if(it.description)add("   "+it.description);
+  add("   Rate: "+fmt(it.rate)+" | GST: "+(it.gst??0)+"% | Amount: "+fmt(Number(it.qty||0)*Number(it.rate||0)));
  });
- y+=4;ensure(42);const totals=[["Subtotal",record.subtotal],["Discount",record.discount],["Taxable value",record.taxable],["GST",record.tax],["Additional charges",record.extraCharges],["Grand total",record.total??record.amount]];
- totals.forEach(([k,v])=>{pdf.setFont("helvetica",k==="Grand total"?"bold":"normal");pdf.setFontSize(k==="Grand total"?12:9);pdf.text(k,135,y);pdf.text(moneyText(v),196,y,{align:"right"});y+=6;});
- y+=5;ensure(25);pdf.setFont("helvetica","bold");line("Notes",14,180,9);pdf.setFont("helvetica","normal");line(record.notes||"",14,180,8);
- pdf.setFont("helvetica","bold");line("Terms & conditions",14,180,9);pdf.setFont("helvetica","normal");line(record.terms||"",14,180,8);
- ensure(18);y+=8;pdf.text("For GOYAL ELECTRICAL",196,y,{align:"right"});y+=13;pdf.text("Authorised Signatory",196,y,{align:"right"});
- return pdf.output("blob");
+ add("--------------------------------------------------------------------------");add("Subtotal: "+fmt(record.subtotal));add("Discount: "+fmt(record.discount));
+ add("Taxable value: "+fmt(record.taxable));add("GST: "+fmt(record.tax));add("Additional charges: "+fmt(record.extraCharges));
+ add("GRAND TOTAL: "+fmt(record.total??record.amount));add("");add("Notes: "+(record.notes||""));
+ add("Terms & conditions: "+(record.terms||""));add("");add("For GOYAL ELECTRICAL");add("Authorised Signatory");
+ const pageLines=[];for(let i=0;i<lines.length;i+=48)pageLines.push(lines.slice(i,i+48));
+ const objects=[];const addObj=v=>{objects.push(v);return objects.length;};
+ const catalogId=addObj("");const pagesId=addObj("");
+ const fontId=addObj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+ const pageIds=[];
+ pageLines.forEach((pageLinesForPage)=>{
+  let stream="BT /F1 9 Tf 48 790 Td 12 TL ";
+  pageLinesForPage.forEach((ln,i)=>{stream+="("+ascii(ln).replace(/([\\\\()])/g,"\\\\$1")+") Tj T* ";});
+  stream+="ET";
+  const contentId=addObj("<< /Length "+stream.length+" >>\\nstream\\n"+stream+"\\nendstream");
+  const pageId=addObj("<< /Type /Page /Parent "+pagesId+" 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 "+fontId+" 0 R >> >> /Contents "+contentId+" 0 R >>");
+  pageIds.push(pageId);
+ });
+ objects[catalogId-1]="<< /Type /Catalog /Pages "+pagesId+" 0 R >>";
+ objects[pagesId-1]="<< /Type /Pages /Kids ["+pageIds.map(x=>x+" 0 R").join(" ")+"] /Count "+pageIds.length+" >>";
+ let pdf="%PDF-1.4\\n";const offsets=[0];
+ objects.forEach((obj,i)=>{offsets.push(pdf.length);pdf+=(i+1)+" 0 obj\\n"+obj+"\\nendobj\\n";});
+ const xref=pdf.length;pdf+="xref\\n0 "+(objects.length+1)+"\\n0000000000 65535 f \\n";
+ for(let i=1;i<offsets.length;i++)pdf+=String(offsets[i]).padStart(10,"0")+" 00000 n \\n";
+ pdf+="trailer\\n<< /Size "+(objects.length+1)+" /Root "+catalogId+" 0 R >>\\nstartxref\\n"+xref+"\\n%%EOF";
+ return new Blob([pdf],{type:"application/pdf"});
 }
 async function shareDocument(type,id){
  const rec=state.data[type].find(x=>x.id===id);if(!rec)return;
