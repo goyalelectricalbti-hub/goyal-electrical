@@ -112,8 +112,29 @@ $("#recordForm").addEventListener("submit",e=>{if(e.submitter?.id==="saveRecord"
 async function deleteRecord(type,id){if(!confirm("Delete this "+labels[type]+" record?"))return;try{await db.collection("organizations").doc(state.orgId).collection(TABLES[type]).doc(id).delete();await loadTable(type);render();toast("Record deleted.")}catch(e){toast("Delete failed: "+e.message,true)}}
 function exportCsv(key){const rows=state.data[key]||[];if(!rows.length){toast("No records to export.");return}const cols=Object.keys(rows[0]);const csv=[cols.join(","),...rows.map(o=>cols.map(k=>'"'+String(o[k]??"").replace(/"/g,'""')+'"').join(","))].join("\r\n");const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));const a=document.createElement("a");a.href=url;a.download="goyal-crm-"+key+".csv";a.click();URL.revokeObjectURL(url)}
 document.addEventListener("click",async e=>{const p=e.target.closest("[data-page]");if(p){state.page=p.dataset.page;render()}const a=e.target.closest("[data-add]");if(a)openForm(a.dataset.add);const ed=e.target.closest("[data-edit]");if(ed)openForm(ed.dataset.edit,ed.dataset.id);const del=e.target.closest("[data-delete]");if(del)deleteRecord(del.dataset.delete,del.dataset.id);const go=e.target.closest("[data-goto]");if(go){state.page=go.dataset.goto;render()}const ex=e.target.closest("[data-export]");if(ex)exportCsv(ex.dataset.export)});
-$("#navigation").addEventListener("click",()=>$("#navigation").classList.remove("open"));
-$("#mobileMenu").onclick=()=>document.querySelector(".sidebar").classList.toggle("open");
+function closeMobileSidebar(){
+ const sidebar=document.querySelector(".sidebar");
+ if(sidebar)sidebar.classList.remove("open");
+ $("#mobileMenu")?.setAttribute("aria-expanded","false");
+}
+function toggleMobileSidebar(){
+ const sidebar=document.querySelector(".sidebar");
+ if(!sidebar)return;
+ const isOpen=sidebar.classList.toggle("open");
+ $("#mobileMenu")?.setAttribute("aria-expanded",String(isOpen));
+}
+$("#navigation").addEventListener("click",e=>{
+ if(e.target.closest("[data-page]"))closeMobileSidebar();
+});
+$("#mobileMenu").addEventListener("click",e=>{
+ e.stopPropagation();
+ toggleMobileSidebar();
+});
+document.addEventListener("click",e=>{
+ const sidebar=document.querySelector(".sidebar");
+ if(sidebar?.classList.contains("open")&&!sidebar.contains(e.target)&&!e.target.closest("#mobileMenu"))closeMobileSidebar();
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMobileSidebar();});
 $("#quickAdd").onclick=()=>openForm(({dashboard:"leads",leads:"leads",customers:"customers",followups:"followups",sites:"sites",products:"products",quotations:"quotations",orders:"orders"}[state.page]||"leads"));
 $("#companySelect").onchange=async e=>{state.companyId=e.target.value;await loadAll()};
 document.addEventListener("input",e=>{if(e.target.id==="searchRows"){const q=e.target.value.toLowerCase();document.querySelectorAll("#pageContent tbody tr").forEach(tr=>tr.style.display=tr.textContent.toLowerCase().includes(q)?"":"none")}});
