@@ -2,7 +2,7 @@
 const $=s=>document.querySelector(s);
 const SUPABASE_URL="https://qimayftlfeoxoifysxil.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_Xte3mnQUztOUdN6LAzCiPw_7-77IxI3";
-const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+const sb=window.supabase?.createClient ? window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY) : null;
 const TABLES={leads:"leads",customers:"customers",followups:"followups",sites:"sites",products:"products",quotations:"quotations",orders:"sales_orders"};
 const state={page:"dashboard",orgId:null,role:null,user:null,companyId:"",companies:[],data:{leads:[],customers:[],followups:[],sites:[],products:[],quotations:[],orders:[]}};
 let editing=null,authMode="signin";
@@ -25,7 +25,7 @@ function companyFilter(q){return q.eq("organization_id",state.orgId).eq("company
 function authNote(msg,error=false){const n=$("#authFeedback");if(n){n.textContent=msg;n.classList.toggle("error",error)}}
 function authModeRender(){ $("#authTitle").textContent=authMode==="signin"?"Sign in to your CRM":"Create staff account";$("#authSubmit").textContent=authMode==="signin"?"Sign in":"Create account";$("#authToggle").textContent=authMode==="signin"?"Need an account? Create staff account":"Already registered? Sign in";authNote("")}
 $("#authToggle").addEventListener("click",()=>{authMode=authMode==="signin"?"signup":"signin";authModeRender()});
-$("#authForm").addEventListener("submit",async e=>{e.preventDefault();const btn=$("#authSubmit");btn.disabled=true;authNote("Please wait…");try{const email=$("#authEmail").value.trim(),password=$("#authPassword").value;const res=authMode==="signin"?await sb.auth.signInWithPassword({email,password}):await sb.auth.signUp({email,password});if(res.error)throw res.error;if(authMode==="signup"&&!res.data.session){authNote("Account created. Confirm your email, then sign in. Ask the administrator to add your staff role.");return}await startWorkspace(res.data.user)}catch(err){authNote(err.message||"Could not sign in.",true)}finally{btn.disabled=false}});
+$("#authForm").addEventListener("submit",async e=>{e.preventDefault();if(!sb){authNote("The sign-in service did not load. Check your internet connection, refresh this page, and try again.",true);return}const btn=$("#authSubmit");btn.disabled=true;authNote("Please wait…");try{const email=$("#authEmail").value.trim(),password=$("#authPassword").value;const res=authMode==="signin"?await sb.auth.signInWithPassword({email,password}):await sb.auth.signUp({email,password});if(res.error)throw res.error;if(authMode==="signup"&&!res.data.session){authNote("Account created. Confirm your email, then sign in. Ask the administrator to add your staff role.");return}await startWorkspace(res.data.user)}catch(err){authNote(err.message||"Could not sign in.",true)}finally{btn.disabled=false}});
 $("#authToggle").addEventListener("keydown",()=>{});
 async function startWorkspace(user){
  state.user=user;authNote("Checking organization access…");
@@ -102,6 +102,5 @@ $("#mobileMenu").onclick=()=>document.querySelector(".sidebar").classList.toggle
 $("#quickAdd").onclick=()=>openForm(({dashboard:"leads",leads:"leads",customers:"customers",followups:"followups",sites:"sites",products:"products",quotations:"quotations",orders:"orders"}[state.page]||"leads"));
 $("#companySelect").onchange=async e=>{state.companyId=e.target.value;await loadAll()};
 document.addEventListener("input",e=>{if(e.target.id==="searchRows"){const q=e.target.value.toLowerCase();document.querySelectorAll("#pageContent tbody tr").forEach(tr=>tr.style.display=tr.textContent.toLowerCase().includes(q)?"":"none")}});
-$("#signOutBtn").addEventListener("click",async()=>{await sb.auth.signOut();location.reload()});
-sb.auth.getSession().then(({data})=>{if(data.session?.user)startWorkspace(data.session.user)});
-sb.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){location.reload()}else if(event==="SIGNED_IN"&&session?.user)startWorkspace(session.user)});
+$("#signOutBtn").addEventListener("click",async()=>{if(sb)await sb.auth.signOut();location.reload()});
+if(sb){sb.auth.getSession().then(({data})=>{if(data.session?.user)startWorkspace(data.session.user)});sb.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){location.reload()}else if(event==="SIGNED_IN"&&session?.user)startWorkspace(session.user)})}else{authNote("The sign-in service did not load. Check your internet connection and refresh the page.",true)}
