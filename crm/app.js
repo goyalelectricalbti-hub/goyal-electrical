@@ -132,10 +132,11 @@ function calculateDoc(){
  const discount=Math.min(subtotal,v("discountType")==="percent"?subtotal*discountRaw/100:discountRaw);
  const taxable=Math.max(0,subtotal-discount)+Math.max(0,Number(v("extraCharges"))||0);
  const charge=checked("chargeGst");
- const tax=charge?docItems.reduce((a,x)=>{const line=Math.max(0,Number(x.qty)||0)*Math.max(0,Number(x.rate)||0);const share=subtotal?line/subtotal:0;const net=Math.max(0,line-discount*share);const base=checked("pricesIncludeGst")?net/(1+Number(x.gst||0)/100):net;return a+(checked("pricesIncludeGst")?net-base:base*Number(x.gst||0)/100)},0):0;
- const baseTaxable=checked("pricesIncludeGst")?taxable-tax:taxable;
+ const itemTax=charge?docItems.reduce((a,x)=>{const line=Math.max(0,Number(x.qty)||0)*Math.max(0,Number(x.rate)||0);const share=subtotal?line/subtotal:0;const net=Math.max(0,line-discount*share);const base=checked("pricesIncludeGst")?net/(1+Number(x.gst||0)/100):net;return a+(checked("pricesIncludeGst")?net-base:base*Number(x.gst||0)/100)},0):0;
  const extraTax=charge&&Number(v("extraCharges"))>0?Number(v("extraCharges"))*.18:0;
- let total=baseTaxable+tax+extraTax;
+ const tax=itemTax+extraTax;
+ const baseTaxable=checked("pricesIncludeGst")?taxable-itemTax:taxable;
+ let total=baseTaxable+tax;
  if(checked("roundOff"))total=Math.round(total);
  return {subtotal,discount,taxable:baseTaxable,tax,total,roundOff:checked("roundOff"),gst:charge,extraCharges:Number(v("extraCharges"))||0};
 }
