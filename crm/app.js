@@ -81,34 +81,104 @@ orders(){return '<div class="<div class="table-toolbar card"><span class="panel-
 reports(){const d=state.data;return '<div class="stats">'+[['Pipeline',money(d.leads.reduce((a,x)=>a+Number(x.estimated_value||0),0))],["Customers",d.customers.length],["Quotations",d.quotations.length],["Orders",d.orders.length]].map(x=>'<div class="card stat"><div class="stat-top">'+x[0]+'</div><div class="stat-value">'+x[1]+'</div><div class="stat-foot">Live cloud data</div></div>').join("")+'</div><div class="card panel"><h3>Export records</h3>'+Object.keys(TABLES).map(k=>'<button class="secondary-btn" style="margin:4px" data-export="'+k+'">Export '+k+'</button>').join("")+'</div>'},
 
 };
+let docItems=[];
+function nextDocNumber(type){
+ const rows=state.data[type]||[];
+ const prefix=type==="quotations"?"EST":"SO";
+ const nums=rows.map(x=>Number(String(x[type==="quotations"?"quotation_number":"order_number"]||"").match(/(\d+)$/)?.[1]||0));
+ return prefix+"-"+String(Math.max(0,...nums)+1).padStart(4,"0");
+}
+function docDate(d){return new Date(d||Date.now()).toISOString().slice(0,10)}
+function documentForm(type,id){
+ const rec=id?state.data[type].find(x=>x.id===id)||{}:{};
+ docItems=Array.isArray(rec.items)?JSON.parse(JSON.stringify(rec.items)):[{name:"",description:"",hsn:"",qty:1,unit:"Nos",rate:0,gst:18}];
+ const isQuote=type==="quotations", label=isQuote?"Quotation":"Sales order";
+ const customerOptions=state.data.customers.map(x=>'<option value="'+esc(x.id)+'" '+(rec.customerId===x.id?"selected":"")+'>'+esc(x.name)+'</option>').join("");
+ $("#dialogTitle").textContent=(id?"Edit ":"New ")+label;
+ $("#dialogFields").innerHTML='<div class="document-editor">'+
+ '<div class="doc-actions"><button type="button" class="secondary-btn" data-doc-preview>Preview / PDF</button><button type="button" class="secondary-btn" data-doc-whatsapp>WhatsApp</button></div>'+
+ '<section class="doc-card"><h3>Bill to</h3><div class="doc-grid"><div class="field"><label>Select customer</label><select name="customerId" id="docCustomer"><option value="">Select customer…</option>'+customerOptions+'</select></div><div class="field"><label>Customer / company name *</label><input name="customerName" required value="'+esc(rec.customerName||"")+'" placeholder="Enter customer name"></div><div class="field"><label>GSTIN</label><input name="gstin" value="'+esc(rec.gstin||"")+'" placeholder="Optional for B2B"></div><div class="field"><label>Phone / WhatsApp</label><input name="phone" value="'+esc(rec.phone||"")+'" placeholder="+91"></div><div class="field"><label>Email</label><input name="email" type="email" value="'+esc(rec.email||"")+'" placeholder="Optional"></div><div class="field full"><label>Billing address</label><textarea name="billingAddress" placeholder="Street, city, PIN code">'+esc(rec.billingAddress||"")+'</textarea></div></div></section>'+
+ '<section class="doc-card"><h3>'+label+' details</h3><div class="doc-grid"><div class="field"><label>'+label+' number *</label><input name="documentNumber" required value="'+esc(rec.documentNumber||rec.quotation_number||rec.order_number||nextDocNumber(type))+'"></div><div class="field"><label>Date</label><input name="documentDate" type="date" value="'+esc(rec.documentDate||rec.quotation_date||rec.order_date||docDate())+'"></div><div class="field"><label>'+(isQuote?"Valid until":"Expected delivery date")+'</label><input name="validUntil" type="date" value="'+esc(rec.validUntil||rec.valid_until||rec.deliveryDate||"")+'"></div><div class="field"><label>Place of supply (state)</label><select name="placeOfSupply" id="docState">'+["Punjab","Haryana","Delhi","Chandigarh","Rajasthan","Himachal Pradesh","Jammu and Kashmir","Uttar Pradesh","Maharashtra","Gujarat","Other"].map(s=>'<option '+((rec.placeOfSupply||"Punjab")===s?"selected":"")+'>'+s+'</option>').join("")+'</select></div><div class="field"><label>Supply type</label><select name="supplyType"><option value="Regular" '+((rec.supplyType||"Regular")==="Regular"?"selected":"")+'>Regular (domestic)</option><option value="SEZ">SEZ</option><option value="Export">Export</option></select></div><div class="field"><label>Status</label><select name="status">'+(isQuote?["Draft","Sent","Accepted","Rejected","Expired"]:["Draft","Pending","Confirmed","In progress","Partially delivered","Completed","Cancelled"]).map(s=>'<option '+((rec.status||(isQuote?"Draft":"Pending"))===s?"selected":"")+'>'+s+'</option>').join("")+'</select></div></div>'+
+ '<div class="doc-switches"><label><input type="checkbox" name="chargeGst" '+(rec.chargeGst!==false?"checked":"")+'> Charge GST</label><label><input type="checkbox" name="pricesIncludeGst" '+(rec.pricesIncludeGst?"checked":"")+'> Rates include GST</label><label><input type="checkbox" name="roundOff" '+(rec.roundOff!==false?"checked":"")+'> Round off total</label></div></section>'+
+ '<section class="doc-card"><h3>Items</h3><div class="doc-items-head"><span>Item / description</span><span>HSN/SAC</span><span>Qty</span><span>Rate ₹</span><span>GST %</span><span></span></div><div id="docItems"></div><button type="button" class="secondary-btn" data-doc-addline>＋ Add line</button>'+
+ '<div class="doc-grid doc-discounts"><div class="field"><label>Discount type</label><select name="discountType"><option value="percent" '+((rec.discountType||"percent")==="percent"?"selected":"")+'>Percentage (%)</option><option value="amount" '+(rec.discountType==="amount"?"selected":"")+'>Amount (₹)</option></select></div><div class="field"><label>Discount</label><input name="discountValue" type="number" min="0" step="0.01" value="'+esc(rec.discountValue||0)+'"></div><div class="field"><label>Additional charges (₹)</label><input name="extraCharges" type="number" min="0" step="0.01" value="'+esc(rec.extraCharges||0)+'" placeholder="Freight / packing"></div></div><div id="docTotals" class="doc-totals"></div></section>'+
+ '<section class="doc-card"><div class="field"><label>Notes</label><textarea name="notes">'+esc(rec.notes||"Thank you for your business!")+'</textarea></div><div class="field"><label>Terms & conditions</label><textarea name="terms">'+esc(rec.terms||(isQuote?"This quotation is valid until the date mentioned above. Prices are subject to change after the validity period.":"Please verify goods and quantities at delivery. Payment as per agreed terms."))+'</textarea></div></section></div>';
+ renderDocItems();
+ const f=$("#dialogFields");
+ f.querySelector("#docCustomer").addEventListener("change",e=>{
+  const x=state.data.customers.find(c=>c.id===e.target.value);if(!x)return;
+  f.querySelector('[name="customerName"]').value=x.name||"";
+  f.querySelector('[name="gstin"]').value=x.gstin||"";
+  f.querySelector('[name="phone"]').value=x.phone||"";
+  f.querySelector('[name="email"]').value=x.email||"";
+  f.querySelector('[name="billingAddress"]').value=x.address||"";
+ });
+ f.querySelectorAll('input[name="chargeGst"],input[name="pricesIncludeGst"],input[name="roundOff"],input[name="discountValue"],input[name="extraCharges"],select[name="discountType"],select[name="placeOfSupply"]').forEach(el=>el.addEventListener("change",renderDocTotals));
+ f.querySelectorAll('input[name="discountValue"],input[name="extraCharges"]').forEach(el=>el.addEventListener("input",renderDocTotals));
+ $("#recordDialog").showModal();
+}
+function renderDocItems(){
+ const host=$("#docItems");if(!host)return;
+ host.innerHTML=docItems.map((it,i)=>'<div class="doc-item-row" data-item="'+i+'"><input data-k="name" value="'+esc(it.name)+'" placeholder="Item or service name"><input data-k="hsn" value="'+esc(it.hsn)+'" placeholder="HSN/SAC"><input data-k="qty" type="number" min="0" step="0.01" value="'+esc(it.qty??1)+'" aria-label="Quantity"><input data-k="rate" type="number" min="0" step="0.01" value="'+esc(it.rate??0)+'" aria-label="Rate"><select data-k="gst" aria-label="GST">'+[0,5,12,18,28].map(v=>'<option value="'+v+'" '+(Number(it.gst??18)===v?"selected":"")+'>'+v+'%</option>').join("")+'</select><button type="button" class="row-action" data-doc-remove="'+i+'">✕</button><input class="doc-description" data-k="description" value="'+esc(it.description)+'" placeholder="Description (optional)"></div>').join("");
+ host.querySelectorAll("input,select").forEach(el=>el.addEventListener("input",()=>{const row=el.closest("[data-item]");const i=Number(row.dataset.item);const k=el.dataset.k;docItems[i][k]=["qty","rate","gst"].includes(k)?Number(el.value||0):el.value;renderDocTotals()}));
+ renderDocTotals();
+}
+function calculateDoc(){
+ const form=$("#recordForm");const v=n=>form.elements[n]?.value;
+ const checked=n=>!!form.elements[n]?.checked;
+ const subtotal=docItems.reduce((a,x)=>a+Math.max(0,Number(x.qty)||0)*Math.max(0,Number(x.rate)||0),0);
+ const discountRaw=Math.max(0,Number(v("discountValue"))||0);
+ const discount=Math.min(subtotal,v("discountType")==="percent"?subtotal*discountRaw/100:discountRaw);
+ const taxable=Math.max(0,subtotal-discount)+Math.max(0,Number(v("extraCharges"))||0);
+ const charge=checked("chargeGst");
+ const tax=charge?docItems.reduce((a,x)=>{const line=Math.max(0,Number(x.qty)||0)*Math.max(0,Number(x.rate)||0);const share=subtotal?line/subtotal:0;const net=Math.max(0,line-discount*share);const base=checked("pricesIncludeGst")?net/(1+Number(x.gst||0)/100):net;return a+(checked("pricesIncludeGst")?net-base:base*Number(x.gst||0)/100)},0):0;
+ const baseTaxable=checked("pricesIncludeGst")?taxable-tax:taxable;
+ const extraTax=charge&&Number(v("extraCharges"))>0?Number(v("extraCharges"))*.18:0;
+ let total=baseTaxable+tax+extraTax;
+ if(checked("roundOff"))total=Math.round(total);
+ return {subtotal,discount,taxable:baseTaxable,tax,total,roundOff:checked("roundOff"),gst:charge,extraCharges:Number(v("extraCharges"))||0};
+}
+function renderDocTotals(){
+ const host=$("#docTotals");if(!host)return;const t=calculateDoc();const stateName=$("#recordForm").elements.placeOfSupply.value;
+ const local=stateName==="Punjab";
+ host.innerHTML='<div><span>Subtotal</span><b>'+money(t.subtotal)+'</b></div><div><span>Discount</span><b>− '+money(t.discount)+'</b></div><div><span>Taxable value</span><b>'+money(t.taxable)+'</b></div><div><span>'+(t.gst?(local?"CGST + SGST / IGST":"IGST"):"GST")+'</span><b>'+money(t.tax)+'</b></div><div><span>Additional charges</span><b>'+money(t.extraCharges)+'</b></div><div class="doc-grand"><span>Grand total</span><b>'+money(t.total)+'</b></div><small>GST estimate only. Verify HSN and applicable tax rates before issuing a tax document.</small>';
+}
 function openForm(type,id){
+ if(type==="quotations"||type==="orders"){documentForm(type,id);return}
  const rec=id?state.data[type].find(x=>x.id===id):{};
  editing={type,id:id||null};
  $("#dialogTitle").textContent=(id?"Edit ":"Add ")+(labels[type]||type);
  $("#dialogFields").innerHTML=fields[type].map(([key,label,kind,extra])=>{
   const value=rec[key]??(kind==="date"?new Date().toISOString().slice(0,10):"");
   let control="";
-  if(kind==="select"){
-   control='<select name="'+key+'">'+extra.split("|").map(v=>'<option value="'+v+'" '+(value===v?"selected":"")+'>'+v.replaceAll("_"," ")+'</option>').join("")+'</select>';
-  }else if(kind==="textarea"){
-   control='<textarea name="'+key+'">'+esc(value)+'</textarea>';
-  }else{
-   control='<input name="'+key+'" type="'+kind+'" value="'+esc(value)+'" '+(extra===1?"required":"")+'>';
-  }
+  if(kind==="select")control='<select name="'+key+'">'+extra.split("|").map(v=>'<option value="'+v+'" '+(value===v?"selected":"")+'>'+v.replaceAll("_"," ")+'</option>').join("")+'</select>';
+  else if(kind==="textarea")control='<textarea name="'+key+'">'+esc(value)+'</textarea>';
+  else control='<input name="'+key+'" type="'+kind+'" value="'+esc(value)+'" '+(extra===1?"required":"")+'>';
   return '<div class="field '+(kind==="textarea"?"full":"")+'"><label>'+label+'</label>'+control+'</div>';
  }).join("");
  $("#recordDialog").showModal();
 }
-async function saveRecord(e){e.preventDefault();if(!editing)return;const btn=$("#saveRecord");btn.disabled=true;try{
- const type=editing.type,obj=Object.fromEntries(new FormData(e.currentTarget));
- for(const [k,v] of Object.entries(obj))if(v==="")obj[k]=null;
- for(const k of ["estimated_value","expected_value","indicative_price","amount","minimum_stock"])if(obj[k]!==undefined)obj[k]=Number(obj[k]||0);
- obj.companyId=state.companyId;obj.createdAt=editing.id?(state.data[type].find(x=>x.id===editing.id)?.createdAt||new Date().toISOString()):new Date().toISOString();obj.updatedAt=new Date().toISOString();
- const ref=db.collection("organizations").doc(state.orgId).collection(TABLES[type]);
- if(editing.id)await ref.doc(editing.id).update(obj);else await ref.add(obj);
- $("#recordDialog").close();await loadTable(type);render();toast("Saved to Firestore successfully.");
- }catch(err){toast("Save failed: "+err.message,true)}finally{btn.disabled=false}}
-$("#recordForm").addEventListener("submit",e=>{if(e.submitter?.id==="saveRecord")saveRecord(e)});
+async function saveRecord(e){
+ e.preventDefault();if(!editing)return;const btn=$("#saveRecord");btn.disabled=true;
+ try{
+  const type=editing.type,obj=Object.fromEntries(new FormData(e.currentTarget));
+  if(type==="quotations"||type==="orders"){
+   const form=e.currentTarget, val=n=>form.elements[n]?.value||"";
+   const checked=n=>!!form.elements[n]?.checked;
+   const totals=calculateDoc();
+   Object.assign(obj,{documentNumber:val("documentNumber"),documentDate:val("documentDate"),customerId:val("customerId"),customerName:val("customerName"),gstin:val("gstin"),phone:val("phone"),email:val("email"),billingAddress:val("billingAddress"),validUntil:val("validUntil"),deliveryDate:val("validUntil"),placeOfSupply:val("placeOfSupply"),supplyType:val("supplyType"),status:val("status"),chargeGst:checked("chargeGst"),pricesIncludeGst:checked("pricesIncludeGst"),roundOff:checked("roundOff"),items:docItems.map(x=>({...x,qty:Number(x.qty)||0,rate:Number(x.rate)||0,gst:Number(x.gst)||0})),discountType:val("discountType"),discountValue:Number(val("discountValue"))||0,extraCharges:Number(val("extraCharges"))||0,notes:val("notes"),terms:val("terms"),...totals});
+   if(type==="quotations"){obj.quotation_number=obj.documentNumber;obj.quotation_date=obj.documentDate;obj.valid_until=obj.validUntil;obj.amount=totals.total}
+   else{obj.order_number=obj.documentNumber;obj.order_date=obj.documentDate;obj.amount=totals.total}
+  }else{
+   for(const [k,v] of Object.entries(obj))if(v==="")obj[k]=null;
+   for(const k of ["estimated_value","expected_value","indicative_price","amount","minimum_stock"])if(obj[k]!==undefined)obj[k]=Number(obj[k]||0);
+  }
+  obj.companyId=state.companyId;obj.createdAt=editing.id?(state.data[type].find(x=>x.id===editing.id)?.createdAt||new Date().toISOString()):new Date().toISOString();obj.updatedAt=new Date().toISOString();
+  const ref=db.collection("organizations").doc(state.orgId).collection(TABLES[type]);
+  if(editing.id)await ref.doc(editing.id).update(obj);else await ref.add(obj);
+  $("#recordDialog").close();await loadTable(type);render();toast("Saved to Firestore successfully.");
+ }catch(err){toast("Save failed: "+err.message,true)}finally{btn.disabled=false}
+}
 async function deleteRecord(type,id){if(!confirm("Delete this "+labels[type]+" record?"))return;try{await db.collection("organizations").doc(state.orgId).collection(TABLES[type]).doc(id).delete();await loadTable(type);render();toast("Record deleted.")}catch(e){toast("Delete failed: "+e.message,true)}}
 function exportCsv(key){const rows=state.data[key]||[];if(!rows.length){toast("No records to export.");return}const cols=Object.keys(rows[0]);const csv=[cols.join(","),...rows.map(o=>cols.map(k=>'"'+String(o[k]??"").replace(/"/g,'""')+'"').join(","))].join("\r\n");const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));const a=document.createElement("a");a.href=url;a.download="goyal-crm-"+key+".csv";a.click();URL.revokeObjectURL(url)}
 document.addEventListener("click",async e=>{const p=e.target.closest("[data-page]");if(p){state.page=p.dataset.page;render()}const a=e.target.closest("[data-add]");if(a)openForm(a.dataset.add);const ed=e.target.closest("[data-edit]");if(ed)openForm(ed.dataset.edit,ed.dataset.id);const del=e.target.closest("[data-delete]");if(del)deleteRecord(del.dataset.delete,del.dataset.id);const go=e.target.closest("[data-goto]");if(go){state.page=go.dataset.goto;render()}const ex=e.target.closest("[data-export]");if(ex)exportCsv(ex.dataset.export)});
