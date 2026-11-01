@@ -193,7 +193,7 @@ function documentPrint(type,record){
 function buildDocumentPdf(type,record){
  // Draw a clean, print-style A4 document directly into a valid PDF.
  const quote=type==="quotations",docTitle=quote?"QUOTATION / ESTIMATE":"SALES ORDER";
- const clean=v=>String(v??"").normalize("NFKD").replace(/[^\\x20-\\x7E]/g," ").replace(/\\s+/g," ").trim();
+ const clean=v=>String(v??"").normalize("NFKD").replace(/[^\x20-\x7E]/g," ").replace(/\s+/g," ").trim();
  const escPdf=v=>clean(v).replace(/([\\\\()])/g,"\\\\$1");
  const n=v=>Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
  const cmds=[];
@@ -270,16 +270,16 @@ function buildDocumentPdf(type,record){
  const objects=[];const obj=v=>{objects.push(v);return objects.length;};
  const catalog=obj("");const pages=obj("");const f1=obj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
  const f2=obj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
- const stream=cmds.join("\\n")+"\\n";
- const content=obj("<< /Length "+stream.length+" >>\\nstream\\n"+stream+"endstream");
+ const stream=cmds.join("\n")+"\n";
+ const content=obj("<< /Length "+stream.length+" >>\nstream\n"+stream+"endstream");
  const page=obj("<< /Type /Page /Parent "+pages+" 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 "+f1+" 0 R /F2 "+f2+" 0 R >> >> /Contents "+content+" 0 R >>");
  objects[catalog-1]="<< /Type /Catalog /Pages "+pages+" 0 R >>";
  objects[pages-1]="<< /Type /Pages /Kids ["+page+" 0 R] /Count 1 >>";
- let pdf="%PDF-1.4\\n",offsets=[0];
- objects.forEach((v,i)=>{offsets.push(pdf.length);pdf+=(i+1)+" 0 obj\\n"+v+"\\nendobj\\n";});
- const xref=pdf.length;pdf+="xref\\n0 "+(objects.length+1)+"\\n0000000000 65535 f \\n";
- for(let i=1;i<offsets.length;i++)pdf+=String(offsets[i]).padStart(10,"0")+" 00000 n \\n";
- pdf+="trailer\\n<< /Size "+(objects.length+1)+" /Root "+catalog+" 0 R >>\\nstartxref\\n"+xref+"\\n%%EOF";
+ let pdf="%PDF-1.4\n",offsets=[0];
+ objects.forEach((v,i)=>{offsets.push(pdf.length);pdf+=(i+1)+" 0 obj\n"+v+"\nendobj\n";});
+ const xref=pdf.length;pdf+="xref\n0 "+(objects.length+1)+"\n0000000000 65535 f \n";
+ for(let i=1;i<offsets.length;i++)pdf+=String(offsets[i]).padStart(10,"0")+" 00000 n \n";
+ pdf+="trailer\n<< /Size "+(objects.length+1)+" /Root "+catalog+" 0 R >>\nstartxref\n"+xref+"\n%%EOF";
  return new Blob([pdf],{type:"application/pdf"});
 }
 async function shareDocument(type,id){
