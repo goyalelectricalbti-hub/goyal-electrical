@@ -1,38 +1,35 @@
 # Supabase setup — GOYAL ELECTRICAL CRM
 
-This is the cloud-backend foundation for the CRM in this folder. The current CRM UI still uses browser-local demo storage until the Supabase project is configured and the application is connected.
+The CRM is now connected in the browser to Supabase Auth and cloud CRUD. GitHub Pages serves the front end; Supabase stores the CRM data. Complete these one-time steps before using it with real customer records.
 
-## 1. Create a free project
-1. Create a Supabase account at https://supabase.com and create a new project.
-2. Keep the database region close to India if available.
-3. Open **SQL Editor → New query**.
-4. Paste and run `schema.sql` from this folder.
-5. In **Authentication → Providers**, enable Email. For initial testing, keep email confirmation enabled and add only approved staff accounts.
+## 1. Prepare the database
+1. Open the Supabase project used by the CRM.
+2. In **SQL Editor → New query**, paste and run `schema.sql`.
+3. Run `grants.sql` in a second query.
+4. In **Authentication → Providers**, enable Email. Keep email confirmation enabled.
+5. In **Authentication → URL Configuration**, add the deployed CRM URL to Site URL / Redirect URLs if Supabase requests it:
+   `https://goyalelectricalbti-hub.github.io/goyal-electrical/crm/`
 
-## 2. Keep credentials safe
-- The browser may use only the Supabase project URL and the **anon/publishable** key.
-- Never put the **service_role** key in HTML, JavaScript, GitHub, screenshots, or chat.
-- Do not put customer data into a public demo project.
-- Restrict sign-ups/invitations to staff who are authorized by the CRM administrator.
+## 2. Create the first administrator
+1. Open the CRM and choose **Create staff account**.
+2. Register the email address that should own the CRM administrator account.
+3. Open that email and confirm the Supabase verification link.
+4. In Supabase **SQL Editor**, open `bootstrap_first_admin.sql`.
+5. Replace BOTH occurrences of `REPLACE_WITH_ADMIN_EMAIL` with the exact confirmed email address, then run the script.
+6. Return to the CRM and sign in with that email and password. The account should show the Admin role and the two companies: Goyal Electrical and Goyal Enterprises.
 
-## 3. First administrator
-The schema intentionally does not create a public self-service organization bootstrap. The first organization and admin membership must be provisioned through a trusted server-side setup action after the first admin account is created. Do not grant admin role from a browser form.
+The first-admin SQL must be run by the project owner in the Supabase dashboard. Do not share the Supabase service_role key with anyone or place it in browser code.
 
-## 4. Roles
-- **Admin:** organization settings, users, companies, full CRM administration.
-- **Manager:** company setup, manage records, review team activity.
-- **Sales:** leads, customers, follow-ups, sites, quotations and orders.
-- **Accountant:** customer/product/order records and BUSY sync review.
+## 3. Add staff
+Staff can create an Auth account, but they cannot grant themselves access. After their email is confirmed, an existing administrator must add their user to `organization_members` with one of these roles: `manager`, `sales`, or `accountant`. Keep administrator access restricted.
 
-Row-level security scopes records to organization membership. Company IDs support multiple BUSY companies under one organization. Verify role permissions with test accounts before entering live data.
+## 4. Verify before live use
+- Sign in as the administrator and create a test customer and lead.
+- Refresh the page and confirm the records remain.
+- Test a second staff account and confirm it cannot access another organization.
+- Use test records until permissions, backups and restore have been checked.
 
-## 5. Before live use
-- Connect the CRM login/session to Supabase Auth.
-- Replace localStorage CRUD with authenticated database calls.
-- Add server-side organization creation/invitation and audit logging.
-- Add file storage with private buckets and signed URLs.
-- Test tenant isolation, role permissions, backups and restore.
-- Keep BUSY sync disabled until the exact BUSY 21 build and supported XML/API/partner interface have been verified.
-
-## Current status
-**Schema foundation committed; not yet connected to the running CRM.** Existing website root files are untouched. No demo records have been imported.
+## Current limitations
+- BUSY 21 is **not connected** yet. The BUSY panel is a status/placeholder; no automatic sync or posting is taking place.
+- Product bulk import, quotation PDF/line items, file attachments and staff invitation screens are not implemented yet.
+- The app uses the Supabase publishable key in the browser, which is expected; never use a service_role/secret key in the front end.
