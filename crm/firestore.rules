@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function member(orgId) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/memberships/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/memberships/$(request.auth.uid)).data.organizationId == orgId;
+    }
+    match /organizations/{orgId} {
+      allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow read: if member(orgId);
+      allow update, delete: if member(orgId) &&
+        get(/databases/$(database)/documents/memberships/$(request.auth.uid)).data.role == 'admin';
+      match /companies/{companyId} {
+        allow read: if member(orgId);
+        allow create, update, delete: if member(orgId) &&
+          get(/databases/$(database)/documents/memberships/$(request.auth.uid)).data.role in ['admin','manager'];
+      }
+      match /{collection}/{recordId} {
+        allow read: if collection in ['leads','customers','followups','sites','products','quotations','orders'] && member(orgId);
+        allow create, update: if collection in ['leads','customers','followups','sites','products','quotations','orders'] &&
+          member(orgId) && request.resource.data.companyId is string;
+        allow delete: if collection in ['leads','customers','followups','sites','products','quotations','orders'] && member(orgId);
+      }
+    }
+    match /memberships/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow create: if signedIn() && request.auth.uid == userId &&
+        request.resource.data.role == 'admin' &&
+        get(/databases/$(database)/documents/organizations/$(request.resource.data.organizationId)).data.createdBy == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}
