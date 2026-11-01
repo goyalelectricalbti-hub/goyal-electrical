@@ -37,6 +37,11 @@ Before building/activating a Windows service:
 
 No automatic posting of finalized accounting vouchers.
 
+## Supabase authentication connection added
+- The browser app now initializes Supabase Auth with the project's URL and publishable key, provides staff sign-in/sign-up, checks organization membership, and offers sign-out.
+- The browser status deliberately says `SECURE LOGIN · LOCAL DATA`: CRM records are still held in browser localStorage and are not yet cloud-synchronized.
+- Apply `supabase/schema.sql`, then `supabase/grants.sql`; create/confirm the first staff login, then run `supabase/bootstrap_first_admin.sql` after replacing the placeholder email.
+
 ## Backend foundation added
 - `supabase/schema.sql` defines the cloud PostgreSQL tables for organizations, staff roles, companies, leads, customers, follow-ups, sites, products, quotations, sales orders, BUSY sync runs and audit events.
 - Row-level security policies scope data to organization membership and separate Admin, Manager, Sales and Accountant permissions.
@@ -44,6 +49,7 @@ No automatic posting of finalized accounting vouchers.
 - This is a schema foundation only. The CRM browser app is not yet connected to Supabase; authentication and live cloud CRUD require a configured Supabase project and app integration.
 
 ## Next production milestones
+- Replace localStorage CRUD with authenticated Supabase queries and company-scoped cloud records.
 - Add managed authentication and Admin/Manager/Sales/Accountant roles.
 - Add cloud database schema, migrations and server APIs.
 - Add file/photo storage and quotation PDF generation.
