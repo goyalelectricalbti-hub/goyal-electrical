@@ -161,6 +161,7 @@ function openForm(type,id){
  }).join("");
  $("#recordDialog").showModal();
 }
+$("#recordForm").addEventListener("submit",saveRecord);
 async function saveRecord(e){
  e.preventDefault();if(!editing)return;const btn=$("#saveRecord");btn.disabled=true;
  try{
@@ -174,7 +175,7 @@ async function saveRecord(e){
    else{obj.order_number=obj.documentNumber;obj.order_date=obj.documentDate;obj.amount=totals.total}
   }else{
    for(const [k,v] of Object.entries(obj))if(v==="")obj[k]=null;
-   for(const k of ["estimated_value","expected_value","indicative_price","amount","minimum_stock"])if(obj[k]!==undefined)obj[k]=Number(obj[k]||0);
+   for(const k of ["estimated_value","expected_value","indicative_price","amount","minimum_stock","gst"])if(obj[k]!==undefined)obj[k]=Number(obj[k]||0);
   }
   obj.companyId=state.companyId;obj.createdAt=editing.id?(state.data[type].find(x=>x.id===editing.id)?.createdAt||new Date().toISOString()):new Date().toISOString();obj.updatedAt=new Date().toISOString();
   const ref=db.collection("organizations").doc(state.orgId).collection(TABLES[type]);
