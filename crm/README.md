@@ -37,6 +37,12 @@ Before building/activating a Windows service:
 
 No automatic posting of finalized accounting vouchers.
 
+## Backend foundation added
+- `supabase/schema.sql` defines the cloud PostgreSQL tables for organizations, staff roles, companies, leads, customers, follow-ups, sites, products, quotations, sales orders, BUSY sync runs and audit events.
+- Row-level security policies scope data to organization membership and separate Admin, Manager, Sales and Accountant permissions.
+- `supabase/SETUP.md` explains how to create a free Supabase project and apply the schema safely.
+- This is a schema foundation only. The CRM browser app is not yet connected to Supabase; authentication and live cloud CRUD require a configured Supabase project and app integration.
+
 ## Next production milestones
 - Add managed authentication and Admin/Manager/Sales/Accountant roles.
 - Add cloud database schema, migrations and server APIs.
