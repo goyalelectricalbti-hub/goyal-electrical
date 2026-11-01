@@ -1,0 +1,15 @@
+{
+  "id": "./",
+  "name": "GOYAL ELECTRICAL CRM PRO",
+  "short_name": "Goyal CRM",
+  "description": "Customer, leads, quotations and sales management for Goyal Electrical and Goyal Enterprises.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f4f7fb",
+  "theme_color": "#102b46",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
